@@ -224,7 +224,12 @@ def fetch_ip_data():
         mask2=32-int(math.log(num_ip,2))
         
         results.append((starting_ip,mask,mask2))
-         
+
+    # private network
+    results.append(("10.0.0.0","255.0.0.0",8))
+    results.append(("192.168.0.0","255.255.255.0",16))
+    results.append(("172.16.0.0","255.240.0.0",12))
+
     return results
 
 
