@@ -221,12 +221,21 @@ echo ---------------------------------------------------------------------------
     upfile.write('\n')
     upfile.write('ipconfig /flushdns\n\n')
     
-    downfile.write("@echo off")
+    downfile.write("@echo off && color 0A")
     downfile.write('\n')
     
+    l, i, p = len(results), 1, -1
     for ip,mask,_ in results:
+        # display percentage
+        cp = i * 100.0 / l
+        if cp - p >= 0.1:
+            p = cp
+            upfile.write('title %.01f%%%%...\n' % (p))
+            downfile.write('title %.01f%%%%...\n' % (p))
+        # write route rules
         upfile.write('route add %s mask %s %s metric %d\n'%(ip,mask,"!gw!",metric))
         downfile.write('route delete %s\n'%(ip))
+        i = i + 1
     
     upfile.close()
     downfile.close()
