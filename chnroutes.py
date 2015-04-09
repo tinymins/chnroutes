@@ -119,11 +119,100 @@ def generate_mac(metric):
 
 def generate_win(metric):
     results = fetch_ip_data()  
-
-    upscript_header=textwrap.dedent("""@echo off
-    for /F "tokens=3" %%* in ('route print ^| findstr "\\<0.0.0.0\\>"') do set "gw=%%*"
     
-    """)
+    upscript_header=textwrap.dedent(""":BOF
+@echo off && cls
+SETLOCAL EnableDelayedExpansion
+
+REM Comfirm Admin Access
+set UAC=0
+bcdedit>nul
+if errorlevel 1 set UAC=1
+if %UAC%==1 (
+    color CE
+    set exitconf=N
+    echo Admin access not detected!
+    set /p exitconf=Input y to ignore this message: 
+    if /i "!exitconf!" NEQ "Y" (goto :EOF)
+)
+REM Admin Access Comfirmed
+
+color 0A
+REM Select gateway if in multi network
+SET N=0
+CALL :GeneGWL
+IF !N! == 0 (
+    echo No adapter detected!
+    CALL :InputGW
+) else (
+    IF !N! == 1 (
+        SET gw=!gwl[0]!
+    ) else (
+        CALL :SetGW
+    )
+)
+goto :SetRouteConfirm
+
+:GeneGWL
+    echo Generating Gateway List...
+    SET N=0
+    FOR /F "tokens=3" %%* in ('route print ^| findstr "\\<0.0.0.0\\>"') do (
+        SET gwl[!N!]=%%*
+        SET /a N+=1
+    )
+    GOTO :EOF
+
+:SetGW
+    REM DISPLAY
+    echo ----------------------------
+    SET i=0
+    :DisplayLoopStart
+    IF !i! EQU !N! GOTO :DisplayLoopEnd
+    FOR /f "usebackq delims== tokens=1-3" %%i IN (`SET gwl[!i!]`) do (
+        echo !i!. %%j
+    )
+    SET /a i+=1
+    GOTO DisplayLoopStart
+    :DisplayLoopEnd
+    echo x. Input custom ip address
+    echo ----------------------------
+    REM DISPLAY END
+
+    REM SELECT
+    SET /p gwi=Please select your gateway: 
+    SET /a i=0
+    
+    if !gwi! EQU x (GOTO InputGW && GOTO :EOF)
+    if !gwi! EQU X (GOTO InputGW && GOTO :EOF)
+    :SelectLoopStart
+    IF "!i!" EQU "!N!" GOTO :SelectLoopEnd
+    FOR /f "usebackq delims== tokens=1-3" %%i IN (`SET gwl[!i!]`) do (
+        IF "!i!" EQU "!gwi!" (
+            SET gw=%%j
+            GOTO SelectLoopEnd
+        )
+    )
+    SET /a i+=1
+    GOTO SelectLoopStart
+    :SelectLoopEnd
+    REM SELECT END
+    GOTO :EOF
+
+:InputGW
+    SET /p gw=Please input gateway ip address: 
+    GOTO :EOF
+
+:SetRouteConfirm
+set confirm=D
+set /p confirm=Confirm your gateway as !gw! or input your gateway now: (Y/N/IP): 
+if /i "!confirm!" EQU "Y" GOTO :SetRoute
+if /i "!confirm!" EQU "N" GOTO :BOF
+if /i "!confirm!" EQU "D" GOTO :SetRouteConfirm
+set gw=!confirm!
+GOTO SetRouteConfirm
+:SetRoute
+echo ------------------------------------------------------------------------------
+""")
     
     upfile=open('vpnup.bat','w')
     downfile=open('vpndown.bat','w')
@@ -136,7 +225,7 @@ def generate_win(metric):
     downfile.write('\n')
     
     for ip,mask,_ in results:
-        upfile.write('route add %s mask %s %s metric %d\n'%(ip,mask,"%gw%",metric))
+        upfile.write('route add %s mask %s %s metric %d\n'%(ip,mask,"!gw!",metric))
         downfile.write('route delete %s\n'%(ip))
     
     upfile.close()
@@ -224,7 +313,12 @@ def fetch_ip_data():
         mask2=32-int(math.log(num_ip,2))
         
         results.append((starting_ip,mask,mask2))
-         
+
+    # private network
+    results.append(("10.0.0.0","255.0.0.0",8))
+    results.append(("172.16.0.0","255.240.0.0",12))
+    results.append(("192.168.0.0","255.255.255.0",16))
+
     return results
 
 
