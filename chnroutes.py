@@ -326,7 +326,7 @@ def fetch_ip_data():
     # private network
     results.append(("10.0.0.0","255.0.0.0",8))
     results.append(("172.16.0.0","255.240.0.0",12))
-    results.append(("192.168.0.0","255.255.255.0",16))
+    results.append(("192.168.0.0","255.255.0.0",16))
 
     return results
 
