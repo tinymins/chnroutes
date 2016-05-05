@@ -328,6 +328,37 @@ def fetch_ip_data():
     results.append(("172.16.0.0","255.240.0.0",12))
     results.append(("192.168.0.0","255.255.0.0",16))
 
+    # custom setting
+    custom_text = ''
+    custom_file = open('custom.txt')
+    customregex = re.compile(r'(\d+\.\d+\.\d+\.\d+)[\s/]+(\d+)')
+    try:
+        custom_text = custom_file.read()
+    finally:
+         custom_file.close()
+    customdata = customregex.findall(custom_text)
+    
+    for item in customdata:
+        string_ip = item[0]
+        num_mask = int(item[1])
+        
+        imask = 0x0
+        for i in xrange(1, num_mask + 1):
+            imask |=  1<<(32-i)
+        #convert to string
+        imask=hex(imask)[2:]
+        mask=[0]*4
+        mask[0]=imask[0:2]
+        mask[1]=imask[2:4]
+        mask[2]=imask[4:6]
+        mask[3]=imask[6:8]
+
+        #convert str to int
+        mask=[ int(i,16 ) for i in mask]
+        mask="%d.%d.%d.%d"%tuple(mask)
+        
+        results.append((string_ip,mask,num_mask))
+
     return results
 
 
